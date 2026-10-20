@@ -319,15 +319,17 @@ mod tests {
     fn read_one_clipboard_file_encodes_with_guessed_mime() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("photo.jpg");
-        std::fs::write(&path, b"\xff\xd8\xff\xe0 fake jpeg").unwrap();
+        // JPEG magic + 占位内容：长度一律由 PAYLOAD 推导，避免手数字节数漂移
+        const PAYLOAD: &[u8] = b"\xff\xd8\xff\xe0 fake jpeg";
+        std::fs::write(&path, PAYLOAD).unwrap();
 
         let mut remaining = MAX_CLIPBOARD_TOTAL_BYTES;
         let entry = read_one_clipboard_file(&path, &mut remaining).unwrap();
         assert_eq!(entry.filename, "photo.jpg");
         assert_eq!(entry.mime, "image/jpeg");
         assert!(entry.data_url.starts_with("data:image/jpeg;base64,"));
-        assert_eq!(entry.size, 15);
-        assert_eq!(remaining, MAX_CLIPBOARD_TOTAL_BYTES - 15);
+        assert_eq!(entry.size, PAYLOAD.len() as u64);
+        assert_eq!(remaining, MAX_CLIPBOARD_TOTAL_BYTES - PAYLOAD.len() as u64);
     }
 
     #[test]
